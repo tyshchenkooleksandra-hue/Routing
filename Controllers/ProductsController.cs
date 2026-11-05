@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ProductsWithRouting.Models;
 using ProductsWithRouting.Services;
 
@@ -12,58 +8,110 @@ namespace ProductsWithRouting.Controllers
 {
     public class ProductsController : Controller
     {
-        private List<Product> myProducts;
+        private readonly IProductService productService;
 
-        public ProductsController(Data data)
+        public ProductsController(IProductService productService)
         {
-            myProducts = data.Products;
+            this.productService = productService;
         }
 
-        public IActionResult Index(int filterId, string filtername)
+        [Route("products")]
+        [Route("products/index", Order = 1)]
+        [Route("items", Order = 1)]
+        [Route("items/index", Order = 1)]
+        public IActionResult Index(int? filterId, string filterName)
         {
-            return View(myProducts);
+            return View(productService.GetAll(filterId, filterName));
         }
 
+        [HttpGet("products/{id:int}")]
         public IActionResult View(int id)
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            var product = productService.GetById(id);
+            if (product == null)
+            {
+                return RedirectToProductNotFound();
+            }
+
+            return View(product);
         }
-        [HttpGet]
+
+        [HttpGet("products/edit/{id:int}")]
         public IActionResult Edit(int id)
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
-        } 
-        [HttpPost]
+            var product = productService.GetById(id);
+            if (product == null)
+            {
+                return RedirectToProductNotFound();
+            }
+
+            return View(product);
+        }
+
+        [HttpPost("products/edit/{id:int}")]
+        [ValidateAntiForgeryToken]
         public IActionResult Edit(Product product)
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
-        } 
-        
-        [HttpPost]
-        public IActionResult Create(Product product)
-        {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            if (!ModelState.IsValid)
+            {
+                return View(product);
+            }
+
+            if (!productService.Update(product))
+            {
+                return RedirectToProductNotFound();
+            }
+
+            return RedirectToAction(nameof(Index));
         }
 
+        [HttpGet("products/create")]
+        [HttpGet("products/new")]
         public IActionResult Create()
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            return View(new Product() { Id = productService.GetNextId() });
         }
 
+        [HttpPost("products/create")]
+        [HttpPost("products/new")]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(Product product)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(product);
+            }
+
+            productService.Add(product);
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet("products/delete/{id:int}")]
         public IActionResult Delete(int id)
         {
-            //Please, add your implementation of the method
-            return View("Index"/*TODO: pass corresponding product here*/);
+            if (!productService.Delete(id))
+            {
+                return RedirectToProductNotFound();
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet("products/not-found")]
+        public IActionResult ProductNotFound()
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return View();
         }
 
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        private IActionResult RedirectToProductNotFound()
+        {
+            return RedirectToAction(nameof(ProductNotFound));
         }
     }
 }

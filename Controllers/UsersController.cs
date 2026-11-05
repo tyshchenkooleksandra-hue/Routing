@@ -1,26 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using ProductsWithRouting.Models;
-using System.Diagnostics;
 using ProductsWithRouting.Services;
 
 namespace ProductsWithRouting.Controllers
 {
     public class UsersController : Controller
     {
-        private List<User> myUsers;
+        private const string AdminAccessKey = "df2323eoT";
+
+        private readonly List<User> myUsers;
 
         public UsersController(Data data)
         {
             myUsers = data.Users;
         }
 
-        public IActionResult Index(string id)
+        [Route("users/index")]
+        public IActionResult Index([FromForm(Name = "id")] string accessKey)
         {
+            if (accessKey != AdminAccessKey)
+            {
+                return Unauthorized();
+            }
+
             return View(myUsers);
         }
 
@@ -28,6 +32,5 @@ namespace ProductsWithRouting.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-
     }
 }
